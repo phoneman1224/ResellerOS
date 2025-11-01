@@ -1,79 +1,181 @@
-# ResellerOS
+# 📦 ResellerOS
 
-ResellerOS is an offline-first, privacy-preserving operating system for independent resellers. It combines inventory management, eBay listing prep, bookkeeping, trend research, and local-first AI assistants into a single open-source toolchain.
+**An AI-Powered, Offline-First, Open Source Business Management Platform for Resellers**
 
-## Features
+---
 
-- **Inventory management** with full CRUD, tagging, attachments, and bulk support via CSV import/export.
-- **Listings & lots** builder with AI-assisted SEO, pricing, and marketing copy powered by local LLMs (Ollama).
-- **Accounting tools** for expenses, sales, and profit tracking with tax estimator inputs.
-- **Research workspace** that keeps offline snapshots and produces AI-assisted summaries for sourcing decisions.
-- **Admin console** for tax rules, integrations, theming, and data backup/restore.
-- **Offline-first architecture** using SQLite with write-ahead logging, heuristic fallbacks when AI or network services are unavailable, and background jobs that log activity without requiring connectivity.
+## 🧭 Overview
 
-## Architecture
+**ResellerOS** is a self-hosted, offline-first, privacy-focused system designed to help independent resellers manage their entire resale business. This includes inventory tracking, listing generation, pricing research, expense tracking, profit analysis, tax estimation, and advanced market research — all enhanced with **locally running AI/LLM tools**.
 
-| Layer | Technology | Notes |
-| ----- | ---------- | ----- |
-| Frontend | React + Vite + Tailwind | Local SPA served via Vite dev server or static build |
-| Backend | Node.js (Express) | REST API for all modules and AI orchestration |
-| Database | SQLite | Portable database stored in `db/database.sqlite` |
-| AI | Ollama (local) | Models like `mistral` or `llama3`. Falls back to heuristics when offline |
-| Jobs | node-cron | Hourly placeholder sync demonstrating offline-safe background tasks |
+> 🎯 Designed for resellers who want automation and business insights **without giving up control** to cloud-based or paid SaaS tools.
 
-```
-reseller-os/
-├── ai/                   # AI + NLP configuration
-├── backend/              # Express API
-├── db/                   # SQLite schema and data
-├── frontend/             # React SPA
-└── shared/               # Data accessible by both backend and offline research
-```
+---
 
-## Getting Started
+## 🚀 Key Features
 
-1. **Install dependencies**
+### ✅ Local, Free & Open Source
+- 100% self-hosted
+- Runs on a local Linux PC (desktop or server)
+- No subscriptions, no cloud lock-in
+- All libraries and models are open-source
 
-   ```bash
-   cd backend && npm install
-   cd ../frontend && npm install
-   ```
+### 🧠 AI + Local LLM Integration
+- **Runs local LLMs via [Ollama](https://ollama.com)** (e.g., Mistral, LLaMA, Gemma)
+- SEO generator for eBay titles and descriptions
+- Market/trend analyzer across eBay, Reddit, YouTube, TikTok, Amazon, Mercari
+- Pricing assistant (based on sales data + AI insights)
+- Tagging and category prediction
+- Content generation (social media, bundles, descriptions)
+- AI-powered business summaries and trend reports
 
-2. **Run backend**
+### 📦 Inventory Management
+- Add/edit/delete items with cost, quantity, condition, category
+- Image attachments and tagging
+- Aging alerts, inventory health indicators
+- CSV import/export
+- Fully editable and user-controlled
 
-   ```bash
-   cd backend
-   npm run start
-   ```
+### 🧾 Sales, Expenses & Profit
+- Track sales from eBay and other platforms
+- Import sold item data via eBay API (no customer info)
+- Calculate net/gross profit per item or lot
+- Add and categorize business expenses (with deductible flag)
+- Estimate taxable income and generate reports
 
-   The API is available at `http://localhost:4000/health`.
+### 📤 eBay Listing Builder (with Draft Push)
+- Create draft listings (individual or lots)
+- Push drafts to eBay via eBay Inventory API
+- Auto-generate titles, descriptions, and prices using local AI
+- Attach images and manage listing status
+- SEO health check for drafts
 
-3. **Run frontend**
+### 📦 Lot Maker
+- Combine multiple inventory items into a lot
+- Auto-price based on item total
+- Generate bundle listings with AI-enhanced titles and descriptions
+- Full CRUD and history tracking for lot items
 
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+### 🔍 Market Research & Trends (AI-Powered)
+- Scrape + summarize from:
+  - eBay
+  - Reddit (reseller subs)
+  - YouTube (reseller content)
+  - TikTok (hashtags/trends)
+  - Amazon / Mercari (scraping)
+- Local NLP and summarization using LLM
+- Watchlists, price tracking, and alerts
+- Trend detection and sourcing suggestions
 
-   The web app runs at `http://localhost:5173` by default.
+### 📊 Tax Estimation & Reports
+- Track income, expenses, and COGS
+- Estimate quarterly self-employment tax
+- Flag deductible expenses
+- Export Schedule C-style CSV/PDF reports
 
-4. **(Optional) Enable local AI**
+### ⚙️ Admin Tools
+- Theme customization (light/dark, fonts, UI)
+- Manage dropdowns (platforms, sources, categories)
+- Backup/restore local database
+- Configure tax brackets, business rules, and API keys
+- Toggle/enable/disable optional modules
 
-   Install [Ollama](https://ollama.ai/) and run:
+---
 
-   ```bash
-   ollama pull mistral
-   ollama serve
-   ```
+## 🧱 Architecture
 
-   The backend automatically connects to `http://127.0.0.1:11434` for AI features. When the service is unavailable, deterministic heuristics generate usable fallback copy.
+| Layer        | Stack / Tool                             |
+|--------------|-------------------------------------------|
+| **Frontend** | React + Vite + Tailwind CSS              |
+| **Backend**  | Node.js + Express                        |
+| **Database** | SQLite (.db file stored locally)         |
+| **AI Engine**| Ollama (Mistral / LLaMA / Gemma)         |
+| **NLP Tools**| spaCy, HuggingFace Transformers, fastText|
+| **Scraping** | Puppeteer / Playwright / scrapy          |
+| **Packaging**| Electron or Tauri (optional desktop app) |
 
-## Data Portability
+---
 
-- All user data lives in the local SQLite database (`db/database.sqlite`).
-- Backups can be created by copying the file or exporting JSON via the API endpoints.
-- CSV import/export is implemented on the frontend and interacts with the REST API for ingestion.
+## 🗂 Folder Structure (Scaffold)
 
-## License
+reseller-os/ ├── backend/ │   ├── routes/ │   ├── controllers/ │   ├── services/       # eBay API, AI, scraping, etc. │   ├── models/ │   ├── jobs/ │   └── server.js ├── frontend/ │   └── src/ │       ├── components/ │       ├── pages/ │       ├── context/ │       └── App.jsx ├── ai/ │   ├── ollama/         # LLM configs │   ├── prompts/        # Custom prompt templates │   └── nlp/            # NLP scripts and processors ├── db/ │   ├── schema.sql │   └── database.sqlite ├── scripts/            # CLI tools, sync jobs, backup ├── shared/ ├── .env ├── README.md └── package.json
 
-ResellerOS is released under the MIT License. All dependencies are permissive and open source.
+---
+
+## ⚙️ Scaffold CLI Setup (Optional)
+
+To auto-generate folders:
+
+1. Create a file called `scaffold.js` and paste this:
+
+```js
+const fs = require('fs-extra');
+const path = require('path');
+
+const folders = [
+  'backend/routes',
+  'backend/controllers',
+  'backend/services',
+  'backend/models',
+  'backend/jobs',
+  'frontend/src/components',
+  'frontend/src/pages',
+  'frontend/src/context',
+  'ai/ollama',
+  'ai/prompts',
+  'ai/nlp',
+  'db',
+  'scripts',
+  'shared',
+];
+
+(async () => {
+  for (const folder of folders) {
+    await fs.ensureDir(path.join(__dirname, folder));
+    console.log(`✔ Created: ${folder}`);
+  }
+
+  await fs.outputFile('db/schema.sql', '-- SQLite schema file');
+  await fs.outputFile('.env', '# Environment variables go here');
+  await fs.outputFile('README.md', '// See root for actual README');
+  console.log('\n✅ Scaffold complete.');
+})();
+
+2. Run it:
+
+
+
+npm install fs-extra
+node scaffold.js
+
+
+---
+
+🤝 Contributing
+
+Want to contribute? Fork the repo, make your changes, and submit a pull request. Please keep everything:
+
+Open source
+
+AI-powered
+
+Local-first
+
+
+
+---
+
+📄 License
+
+This project is licensed under the MIT License.
+You are free to use, modify, and distribute it for personal or commercial purposes.
+
+
+---
+
+🙏 Credits
+
+ResellerOS was envisioned to help solo resellers run smarter businesses with zero cost, using modern AI responsibly and privately.
+
+---
+
