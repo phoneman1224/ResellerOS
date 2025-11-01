@@ -1,0 +1,13 @@
+{
+  "name": "reseller-os",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "lint": "npm run lint --workspaces"
+  }
+}
