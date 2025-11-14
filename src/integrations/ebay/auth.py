@@ -7,8 +7,12 @@ import requests
 from urllib.parse import urlencode, parse_qs
 import http.server
 import socketserver
+import ssl
+import tempfile
+import os
 from threading import Thread
 from typing import Optional
+from pathlib import Path
 import logging
 
 from src.config.settings import settings
@@ -37,6 +41,100 @@ class EbayAuth:
         self.redirect_uri = fresh_settings.ebay_redirect_uri
         self.auth_url = fresh_settings.ebay_auth_url
         self.token_url = fresh_settings.ebay_token_url
+
+    def _generate_self_signed_cert(self):
+        """Generate self-signed certificate for HTTPS OAuth callback.
+
+        Returns:
+            Tuple of (cert_file_path, key_file_path)
+        """
+        cert_dir = Path.home() / ".reselleros" / "certs"
+        cert_dir.mkdir(parents=True, exist_ok=True)
+
+        cert_file = cert_dir / "oauth_cert.pem"
+        key_file = cert_dir / "oauth_key.pem"
+
+        # Check if certificate already exists and is valid
+        if cert_file.exists() and key_file.exists():
+            return str(cert_file), str(key_file)
+
+        # Generate new self-signed certificate using openssl command
+        try:
+            import subprocess
+            subprocess.run([
+                "openssl", "req", "-x509", "-newkey", "rsa:4096",
+                "-keyout", str(key_file),
+                "-out", str(cert_file),
+                "-days", "365", "-nodes",
+                "-subj", "/CN=localhost"
+            ], check=True, capture_output=True)
+
+            logger.info(f"Generated self-signed certificate at {cert_file}")
+            return str(cert_file), str(key_file)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            logger.warning(f"Could not generate certificate with openssl: {e}")
+            # Fall back to Python's certificate generation
+            return self._generate_cert_python(cert_file, key_file)
+
+    def _generate_cert_python(self, cert_file, key_file):
+        """Generate certificate using pure Python (cryptography library)."""
+        try:
+            from cryptography import x509
+            from cryptography.x509.oid import NameOID
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.asymmetric import rsa
+            from cryptography.hazmat.primitives import serialization
+            import datetime
+
+            # Generate private key
+            private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=2048,
+            )
+
+            # Generate certificate
+            subject = issuer = x509.Name([
+                x509.NameAttribute(NameOID.COMMON_NAME, u"localhost"),
+            ])
+
+            cert = x509.CertificateBuilder().subject_name(
+                subject
+            ).issuer_name(
+                issuer
+            ).public_key(
+                private_key.public_key()
+            ).serial_number(
+                x509.random_serial_number()
+            ).not_valid_before(
+                datetime.datetime.utcnow()
+            ).not_valid_after(
+                datetime.datetime.utcnow() + datetime.timedelta(days=365)
+            ).add_extension(
+                x509.SubjectAlternativeName([
+                    x509.DNSName(u"localhost"),
+                ]),
+                critical=False,
+            ).sign(private_key, hashes.SHA256())
+
+            # Write certificate
+            with open(cert_file, "wb") as f:
+                f.write(cert.public_bytes(serialization.Encoding.PEM))
+
+            # Write private key
+            with open(key_file, "wb") as f:
+                f.write(private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.TraditionalOpenSSL,
+                    encryption_algorithm=serialization.NoEncryption()
+                ))
+
+            logger.info(f"Generated self-signed certificate using cryptography library")
+            return str(cert_file), str(key_file)
+
+        except ImportError:
+            raise EbayAuthError(
+                "Cannot generate HTTPS certificate. Please install openssl or ensure cryptography library is available."
+            )
 
     def get_authorization_url(self) -> str:
         """Generate OAuth authorization URL.
@@ -136,8 +234,26 @@ class EbayAuth:
             allow_reuse_address = True
 
         try:
+            # Determine if HTTPS is needed
+            use_https = self.redirect_uri.startswith('https://')
+            protocol = 'https' if use_https else 'http'
+
             # Start local callback server with socket reuse enabled
             port = int(self.redirect_uri.split(':')[-1].rstrip('/'))
+
+            # Generate certificate if HTTPS is needed
+            cert_file = None
+            key_file = None
+            if use_https:
+                try:
+                    cert_file, key_file = self._generate_self_signed_cert()
+                    logger.info("Using HTTPS for OAuth callback server")
+                except Exception as e:
+                    logger.error(f"Failed to generate certificate: {e}")
+                    raise EbayAuthError(
+                        "Failed to set up HTTPS for OAuth callback. "
+                        "Please ensure openssl is installed or the cryptography library is available."
+                    )
 
             # Create server with address reuse
             httpd = None
@@ -145,12 +261,19 @@ class EbayAuth:
                 try:
                     httpd = ReusableTCPServer(("", attempt_port), CallbackHandler)
                     actual_port = httpd.server_address[1]
-                    logger.info(f"OAuth callback server started on port {actual_port}")
+
+                    # Wrap with SSL if HTTPS
+                    if use_https and cert_file and key_file:
+                        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                        context.load_cert_chain(cert_file, key_file)
+                        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+
+                    logger.info(f"OAuth callback server started on {protocol}://localhost:{actual_port}")
 
                     # Update redirect URI if using different port
                     if actual_port != port:
                         original_redirect = self.redirect_uri
-                        self.redirect_uri = f"http://localhost:{actual_port}"
+                        self.redirect_uri = f"{protocol}://localhost:{actual_port}"
                         logger.warning(
                             f"Using port {actual_port} instead of {port}. "
                             f"Make sure your eBay app redirect URI is set to {self.redirect_uri}"

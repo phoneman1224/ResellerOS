@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # eBay API
     ebay_client_id: Optional[str] = Field(default=None, env="EBAY_CLIENT_ID")
     ebay_client_secret: Optional[str] = Field(default=None, env="EBAY_CLIENT_SECRET")
-    ebay_redirect_uri: str = Field(default="http://localhost:8080", env="EBAY_REDIRECT_URI")
+    ebay_redirect_uri: str = Field(default="https://localhost:8443", env="EBAY_REDIRECT_URI")
     ebay_environment: str = Field(default="production", env="EBAY_ENVIRONMENT")
 
     # Ollama Configuration
