@@ -122,14 +122,20 @@ class MainWindow(QMainWindow):
         """Create and add all application views."""
         from src.gui.views.dashboard_view import DashboardView
         from src.gui.views.inventory_view import InventoryView
+        from src.gui.views.expenses_view import ExpensesView
+        from src.gui.views.analytics_view import AnalyticsView
         from src.gui.views.assistant_view import AssistantView
+        from src.gui.views.ebay_view import EbayView
         from src.gui.views.settings_view import SettingsView
 
-        # Create views
+        # Create all views
         views_to_create = {
             "dashboard": DashboardView,
             "inventory": InventoryView,
+            "expenses": ExpensesView,
+            "analytics": AnalyticsView,
             "assistant": AssistantView,
+            "ebay": EbayView,
             "settings": SettingsView,
         }
 
@@ -144,16 +150,9 @@ class MainWindow(QMainWindow):
                 # Create placeholder
                 placeholder = QWidget()
                 placeholder_layout = QVBoxLayout(placeholder)
-                label = QLabel(f"View '{name}' not available")
+                label = QLabel(f"View '{name}' not available\n\nError: {str(e)}")
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 placeholder_layout.addWidget(label)
-                self.views[name] = placeholder
-                self.content_stack.addWidget(placeholder)
-
-        # Add placeholders for views not yet implemented
-        for name in ["expenses", "analytics", "ebay"]:
-            if name not in self.views:
-                placeholder = self.create_placeholder_view(name.capitalize())
                 self.views[name] = placeholder
                 self.content_stack.addWidget(placeholder)
 
