@@ -244,6 +244,8 @@ class SettingsView(QWidget):
             env_content['EBAY_CLIENT_ID'] = client_id
             env_content['EBAY_CLIENT_SECRET'] = client_secret
             env_content['EBAY_ENVIRONMENT'] = environment
+            # Always set redirect URI to HTTPS (required by eBay)
+            env_content['EBAY_REDIRECT_URI'] = 'https://localhost:8443'
 
             # Write back to .env file
             with open(env_path, 'w') as f:
@@ -254,6 +256,8 @@ class SettingsView(QWidget):
                 self,
                 "Success",
                 "eBay credentials saved successfully!\n\n"
+                "IMPORTANT: Make sure your eBay app has this redirect URI configured:\n"
+                "https://localhost:8443\n\n"
                 "You can now connect to eBay from the eBay Integration tab."
             )
 
