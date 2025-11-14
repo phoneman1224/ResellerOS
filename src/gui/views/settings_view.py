@@ -242,7 +242,7 @@ class SettingsView(QWidget):
                 self,
                 "Success",
                 "eBay credentials saved successfully!\n\n"
-                "Please restart ResellerOS for changes to take effect."
+                "You can now connect to eBay from the eBay Integration tab."
             )
 
             logger.info("eBay credentials saved to .env file")

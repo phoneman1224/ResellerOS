@@ -23,14 +23,20 @@ class EbayAuth:
 
     def __init__(self):
         """Initialize eBay auth handler."""
-        self.client_id = settings.ebay_client_id
-        self.client_secret = settings.ebay_client_secret
-        self.redirect_uri = settings.ebay_redirect_uri
         self.secure_storage = SecureStorage()
+        self._reload_settings()
 
-        # OAuth endpoints
-        self.auth_url = settings.ebay_auth_url
-        self.token_url = settings.ebay_token_url
+    def _reload_settings(self):
+        """Reload settings from .env file to get latest credentials."""
+        # Force reload settings from .env file
+        from src.config.settings import Settings
+        fresh_settings = Settings()
+
+        self.client_id = fresh_settings.ebay_client_id
+        self.client_secret = fresh_settings.ebay_client_secret
+        self.redirect_uri = fresh_settings.ebay_redirect_uri
+        self.auth_url = fresh_settings.ebay_auth_url
+        self.token_url = fresh_settings.ebay_token_url
 
     def get_authorization_url(self) -> str:
         """Generate OAuth authorization URL.
@@ -38,6 +44,11 @@ class EbayAuth:
         Returns:
             Authorization URL for user to visit
         """
+        if not self.client_id:
+            raise EbayAuthError(
+                "eBay Client ID is not configured. Please configure it in Settings."
+            )
+
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
@@ -48,6 +59,17 @@ class EbayAuth:
                 "https://api.ebay.com/oauth/api_scope/sell.fulfillment",
             ])
         }
+
+        # Log the URL for debugging
+        logger.info(f"eBay OAuth Configuration:")
+        logger.info(f"  Auth URL: {self.auth_url}")
+        logger.info(f"  Redirect URI: {self.redirect_uri}")
+        logger.info(f"  Environment: {'Sandbox' if 'sandbox' in self.auth_url else 'Production'}")
+        logger.info(f"")
+        logger.info(f"IMPORTANT: Make sure your eBay app has this redirect URI configured:")
+        logger.info(f"  {self.redirect_uri}")
+        logger.info(f"")
+
         return f"{self.auth_url}?{urlencode(params)}"
 
     def start_oauth_flow(self) -> bool:
@@ -59,10 +81,13 @@ class EbayAuth:
         Raises:
             EbayAuthError: If authentication fails
         """
+        # Reload settings to get latest credentials from .env
+        self._reload_settings()
+
         if not self.client_id or not self.client_secret:
             raise EbayAuthError(
                 "eBay API credentials not configured. "
-                "Please set EBAY_CLIENT_ID and EBAY_CLIENT_SECRET in .env file"
+                "Please configure them in Settings and try again."
             )
 
         authorization_code = [None]
