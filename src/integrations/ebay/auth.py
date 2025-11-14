@@ -238,8 +238,16 @@ class EbayAuth:
             use_https = self.redirect_uri.startswith('https://')
             protocol = 'https' if use_https else 'http'
 
-            # Start local callback server with socket reuse enabled
-            port = int(self.redirect_uri.split(':')[-1].rstrip('/'))
+            # Extract port from redirect URI, or use defaults
+            # For external URLs (like Cloudflare tunnels), use default HTTPS port 8443
+            if ':' in self.redirect_uri.split('/')[-1]:
+                # Port is explicitly specified in URL
+                port = int(self.redirect_uri.split(':')[-1].rstrip('/'))
+            else:
+                # No explicit port - use 8443 for HTTPS, 8080 for HTTP
+                port = 8443 if use_https else 8080
+
+            logger.info(f"Callback server will listen on local port {port}")
 
             # Generate certificate if HTTPS is needed
             cert_file = None
@@ -270,14 +278,18 @@ class EbayAuth:
 
                     logger.info(f"OAuth callback server started on {protocol}://localhost:{actual_port}")
 
-                    # Update redirect URI if using different port
-                    if actual_port != port:
-                        original_redirect = self.redirect_uri
-                        self.redirect_uri = f"{protocol}://localhost:{actual_port}"
-                        logger.warning(
-                            f"Using port {actual_port} instead of {port}. "
-                            f"Make sure your eBay app redirect URI is set to {self.redirect_uri}"
-                        )
+                    # Only update redirect URI if using localhost (not external tunnel)
+                    if 'localhost' in self.redirect_uri or '127.0.0.1' in self.redirect_uri:
+                        if actual_port != port:
+                            original_redirect = self.redirect_uri
+                            self.redirect_uri = f"{protocol}://localhost:{actual_port}"
+                            logger.warning(
+                                f"Using port {actual_port} instead of {port}. "
+                                f"Make sure your eBay app redirect URI is set to {self.redirect_uri}"
+                            )
+                    else:
+                        logger.info(f"Using external tunnel URL: {self.redirect_uri}")
+                        logger.info(f"Local server listening on port {actual_port}, accessible via tunnel")
 
                     break
                 except OSError as e:
