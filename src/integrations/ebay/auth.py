@@ -106,10 +106,44 @@ class EbayAuth:
             def log_message(self, format, *args):
                 pass  # Suppress default logging
 
+        # Custom TCPServer that allows address reuse
+        class ReusableTCPServer(socketserver.TCPServer):
+            allow_reuse_address = True
+
         try:
-            # Start local callback server
-            port = int(self.redirect_uri.split(':')[-1])
-            with socketserver.TCPServer(("", port), CallbackHandler) as httpd:
+            # Start local callback server with socket reuse enabled
+            port = int(self.redirect_uri.split(':')[-1].rstrip('/'))
+
+            # Create server with address reuse
+            httpd = None
+            for attempt_port in [port, port + 1, port + 2]:  # Try original port, +1, +2
+                try:
+                    httpd = ReusableTCPServer(("", attempt_port), CallbackHandler)
+                    actual_port = httpd.server_address[1]
+                    logger.info(f"OAuth callback server started on port {actual_port}")
+
+                    # Update redirect URI if using different port
+                    if actual_port != port:
+                        original_redirect = self.redirect_uri
+                        self.redirect_uri = f"http://localhost:{actual_port}"
+                        logger.warning(
+                            f"Using port {actual_port} instead of {port}. "
+                            f"Make sure your eBay app redirect URI is set to {self.redirect_uri}"
+                        )
+
+                    break
+                except OSError as e:
+                    if attempt_port == port + 2:  # Last attempt
+                        raise EbayAuthError(
+                            f"Could not start OAuth callback server. Ports {port}, {port+1}, and {port+2} are in use. "
+                            f"Please close other applications or change EBAY_REDIRECT_URI in Settings."
+                        )
+                    continue
+
+            if httpd is None:
+                raise EbayAuthError("Could not start OAuth callback server")
+
+            with httpd:
                 server_thread = Thread(target=httpd.handle_request, daemon=True)
                 server_thread.start()
 
