@@ -3,12 +3,13 @@ Settings view for application configuration.
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QGroupBox, QFormLayout, QLineEdit, QMessageBox, QTextEdit
+    QGroupBox, QFormLayout, QLineEdit, QMessageBox, QTextEdit, QComboBox
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 import requests
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,30 @@ class SettingsView(QWidget):
         self.ebay_status_label = QLabel("Not Connected")
         ebay_layout.addRow("Status:", self.ebay_status_label)
 
+        # eBay credentials input
+        self.ebay_client_id_input = QLineEdit()
+        self.ebay_client_id_input.setPlaceholderText("Enter your eBay Client ID...")
+        ebay_layout.addRow("Client ID:", self.ebay_client_id_input)
+
+        self.ebay_client_secret_input = QLineEdit()
+        self.ebay_client_secret_input.setPlaceholderText("Enter your eBay Client Secret...")
+        self.ebay_client_secret_input.setEchoMode(QLineEdit.EchoMode.Password)
+        ebay_layout.addRow("Client Secret:", self.ebay_client_secret_input)
+
+        self.ebay_environment_combo = QComboBox()
+        self.ebay_environment_combo.addItems(["sandbox", "production"])
+        ebay_layout.addRow("Environment:", self.ebay_environment_combo)
+
+        # Save credentials button
+        save_creds_btn = QPushButton("💾 Save Credentials")
+        save_creds_btn.clicked.connect(self.save_ebay_credentials)
+        ebay_layout.addRow(save_creds_btn)
+
+        # Get credentials link
+        get_creds_label = QLabel('<a href="https://developer.ebay.com/">Get eBay API Credentials</a>')
+        get_creds_label.setOpenExternalLinks(True)
+        ebay_layout.addRow("Need credentials?", get_creds_label)
+
         ebay_btn_layout = QHBoxLayout()
 
         self.connect_ebay_btn = QPushButton("Connect eBay Account")
@@ -67,8 +92,20 @@ class SettingsView(QWidget):
 
         self.ollama_url_input = QLineEdit()
         self.ollama_url_input.setPlaceholderText("http://localhost:11434")
-        self.ollama_url_input.setEnabled(False)
         ai_layout.addRow("Ollama URL:", self.ollama_url_input)
+
+        self.ollama_model_input = QLineEdit()
+        self.ollama_model_input.setPlaceholderText("phi3")
+        ai_layout.addRow("Model Name:", self.ollama_model_input)
+
+        save_ollama_btn = QPushButton("💾 Save AI Settings")
+        save_ollama_btn.clicked.connect(self.save_ollama_settings)
+        ai_layout.addRow(save_ollama_btn)
+
+        # Ollama installation link
+        ollama_link = QLabel('<a href="https://ollama.ai/">Install Ollama</a>')
+        ollama_link.setOpenExternalLinks(True)
+        ai_layout.addRow("Need Ollama?", ollama_link)
 
         layout.addWidget(ai_group)
 
@@ -114,9 +151,147 @@ class SettingsView(QWidget):
 
     def load_settings(self):
         """Load current settings."""
+        self.load_ebay_credentials()
         self.check_ebay_status()
         self.check_ollama_status()
         self.load_system_info()
+
+    def load_ebay_credentials(self):
+        """Load eBay credentials from .env file."""
+        try:
+            env_path = ".env"
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as f:
+                    content = f.read()
+
+                # Parse .env file
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+
+                        if key == 'EBAY_CLIENT_ID':
+                            self.ebay_client_id_input.setText(value)
+                        elif key == 'EBAY_CLIENT_SECRET':
+                            self.ebay_client_secret_input.setText(value)
+                        elif key == 'EBAY_ENVIRONMENT':
+                            index = self.ebay_environment_combo.findText(value)
+                            if index >= 0:
+                                self.ebay_environment_combo.setCurrentIndex(index)
+                        elif key == 'OLLAMA_BASE_URL':
+                            self.ollama_url_input.setText(value)
+                        elif key == 'OLLAMA_MODEL':
+                            self.ollama_model_input.setText(value)
+        except Exception as e:
+            logger.error(f"Failed to load settings: {e}")
+
+    def save_ebay_credentials(self):
+        """Save eBay credentials to .env file."""
+        client_id = self.ebay_client_id_input.text().strip()
+        client_secret = self.ebay_client_secret_input.text().strip()
+        environment = self.ebay_environment_combo.currentText()
+
+        if not client_id or not client_secret:
+            QMessageBox.warning(
+                self,
+                "Missing Information",
+                "Please enter both Client ID and Client Secret"
+            )
+            return
+
+        try:
+            env_path = ".env"
+
+            # Read existing .env content
+            env_content = {}
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            env_content[key.strip()] = value.strip()
+
+            # Update eBay credentials
+            env_content['EBAY_CLIENT_ID'] = client_id
+            env_content['EBAY_CLIENT_SECRET'] = client_secret
+            env_content['EBAY_ENVIRONMENT'] = environment
+
+            # Write back to .env file
+            with open(env_path, 'w') as f:
+                for key, value in env_content.items():
+                    f.write(f"{key}={value}\n")
+
+            QMessageBox.information(
+                self,
+                "Success",
+                "eBay credentials saved successfully!\n\n"
+                "Please restart ResellerOS for changes to take effect."
+            )
+
+            logger.info("eBay credentials saved to .env file")
+
+        except Exception as e:
+            logger.error(f"Failed to save eBay credentials: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to save credentials: {str(e)}"
+            )
+
+    def save_ollama_settings(self):
+        """Save Ollama settings to .env file."""
+        ollama_url = self.ollama_url_input.text().strip()
+        ollama_model = self.ollama_model_input.text().strip()
+
+        if not ollama_url:
+            ollama_url = "http://localhost:11434"
+        if not ollama_model:
+            ollama_model = "phi3"
+
+        try:
+            env_path = ".env"
+
+            # Read existing .env content
+            env_content = {}
+            if os.path.exists(env_path):
+                with open(env_path, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            env_content[key.strip()] = value.strip()
+
+            # Update Ollama settings
+            env_content['OLLAMA_BASE_URL'] = ollama_url
+            env_content['OLLAMA_MODEL'] = ollama_model
+
+            # Write back to .env file
+            with open(env_path, 'w') as f:
+                for key, value in env_content.items():
+                    f.write(f"{key}={value}\n")
+
+            QMessageBox.information(
+                self,
+                "Success",
+                "Ollama settings saved successfully!\n\n"
+                "Please restart ResellerOS for changes to take effect."
+            )
+
+            logger.info("Ollama settings saved to .env file")
+
+            # Refresh Ollama status
+            self.check_ollama_status()
+
+        except Exception as e:
+            logger.error(f"Failed to save Ollama settings: {e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to save settings: {str(e)}"
+            )
 
     def check_ebay_status(self):
         """Check eBay connection status."""

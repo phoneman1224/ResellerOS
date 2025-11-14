@@ -8,6 +8,11 @@ import time
 from threading import Thread
 from pathlib import Path
 
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 # Setup logging first
 from src.config.logging_config import setup_logging
 setup_logging()
