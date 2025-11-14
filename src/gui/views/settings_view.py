@@ -72,6 +72,18 @@ class SettingsView(QWidget):
         self.ebay_environment_combo.addItems(["sandbox", "production"])
         ebay_layout.addRow("Environment:", self.ebay_environment_combo)
 
+        # Redirect URI info
+        redirect_uri_label = QLabel(
+            '<b>Important:</b> In your eBay app settings, add this redirect URI:<br>'
+            '<code>https://localhost:8443</code><br>'
+            '<small>Configure this at <a href="https://developer.ebay.com/my/keys">developer.ebay.com/my/keys</a> '
+            'under "User Tokens"</small>'
+        )
+        redirect_uri_label.setWordWrap(True)
+        redirect_uri_label.setOpenExternalLinks(True)
+        redirect_uri_label.setStyleSheet("QLabel { background-color: #ffffcc; padding: 8px; border-radius: 4px; }")
+        ebay_layout.addRow(redirect_uri_label)
+
         # Save credentials button
         save_creds_btn = QPushButton("💾 Save Credentials")
         save_creds_btn.clicked.connect(self.save_ebay_credentials)
