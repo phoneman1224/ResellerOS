@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import logging
 
 from src.core.exceptions import AuthenticationError
@@ -233,7 +233,7 @@ def hash_password(password: str, salt: Optional[bytes] = None) -> tuple[str, str
     if salt is None:
         salt = os.urandom(16)
 
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,

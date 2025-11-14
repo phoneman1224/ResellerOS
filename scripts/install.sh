@@ -55,7 +55,14 @@ pip install --quiet --upgrade pip
 # Install dependencies
 echo ""
 echo "Installing dependencies..."
-pip install --quiet -r requirements.txt
+echo "This may take a few minutes..."
+
+# Uninstall any existing PyQt6 to avoid conflicts
+pip uninstall -y PyQt6 PyQt6-Qt6 PyQt6-sip 2>/dev/null || true
+
+# Install requirements
+pip install --upgrade -r requirements.txt
+
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 
 # Create .env file if it doesn't exist
