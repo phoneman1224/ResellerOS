@@ -3,7 +3,8 @@ Settings view for application configuration.
 """
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
-    QGroupBox, QFormLayout, QLineEdit, QMessageBox, QTextEdit, QComboBox
+    QGroupBox, QFormLayout, QLineEdit, QMessageBox, QTextEdit, QComboBox,
+    QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -25,9 +26,22 @@ class SettingsView(QWidget):
 
     def setup_ui(self):
         """Setup user interface."""
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Scroll area for all content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        main_layout.addWidget(scroll)
+
+        # Content widget inside scroll area
+        content = QWidget()
+        scroll.setWidget(content)
+
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
+        layout.setSpacing(25)
 
         # Header
         title = QLabel("Settings")
